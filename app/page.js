@@ -5,8 +5,9 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function Home() {
-  const { gitHubSignIn, user, loading } = useAuth();
+  const { gitHubSignIn, user, loading, session } = useAuth();
   const router = useRouter();
+  console.log("Session:", session?.access_token);
 
   async function handleSignIn() {
     await gitHubSignIn();

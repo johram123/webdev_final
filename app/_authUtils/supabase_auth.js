@@ -8,6 +8,7 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState(null);
 
   async function gitHubSignIn() {
     const { data, error } = await supabase.auth.signInWithOAuth({
@@ -18,6 +19,8 @@ export const AuthProvider = ({ children }) => {
       console.error("Error signing in with GitHub:", error);
       return;
     }
+
+    return data;
   }
 
   async function signOut() {
@@ -28,10 +31,17 @@ export const AuthProvider = ({ children }) => {
   }
 
   useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setUser(session?.user);
         setLoading(false);
+        setSession(session);
       }
     );
 
@@ -41,7 +51,9 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, gitHubSignIn, signOut }}>
+    <AuthContext.Provider
+      value={{ user, loading, session, gitHubSignIn, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   );
