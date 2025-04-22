@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useAuth } from "../_authUtils/supabase_auth";
+import { useAuth } from "../../_authUtils/supabase_auth";
 import { useEffect } from "react";
 
 export default function Menu() {
@@ -9,6 +9,7 @@ export default function Menu() {
 
   async function insertUser() {
     const formattedName = user.email.split("@")[0];
+    console.log("name var ", user);
     console.log("Access token:", session?.access_token);
 
     await fetch("/api/users", {
@@ -27,10 +28,10 @@ export default function Menu() {
 
   return (
     <main>
-      <h1>Welcome {user?.email}</h1>
+      <h1>Welcome {user?.email.split("@")[0]}</h1>
       <h1>Menu</h1>
       <div>
-        <Link href="/menu/profile">Profile</Link>
+        <Link href="menu/profile">Profile</Link>
       </div>
       <div>
         <Link href="/find_lobby">Find Lobbies</Link>

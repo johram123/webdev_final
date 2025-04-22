@@ -6,7 +6,7 @@ export async function POST(request, { params }) {
   const supabase = createSupabaseServerClient(token);
   const { forceJoin } = request.json();
 
-  const { id } = params;
+  const { id } = await params;
 
   const {
     data: { user },
@@ -17,6 +17,8 @@ export async function POST(request, { params }) {
     return new Response("Unauthorized", { status: 401 });
   }
 
+  const formattedName = user.email.split("@")[0];
+
   const { data: playerExists } = await supabase
     .from("lobby_players")
     .select("*")
@@ -24,10 +26,9 @@ export async function POST(request, { params }) {
     .maybeSingle();
 
   if (playerExists && !forceJoin) {
-    return new Response(
-      { alreadyInLobby: true, currentLobbyId: playerExists.lobby_id },
-      { status: 200 }
-    );
+    return new Response(JSON.stringify({ alreadyInLobby: true }), {
+      status: 409,
+    });
   }
 
   if (playerExists && forceJoin) {
@@ -44,7 +45,7 @@ export async function POST(request, { params }) {
 
   const { data, error } = await supabase
     .from("lobby_players")
-    .insert({ lobby_id: id });
+    .insert({ lobby_id: id, player_name: formattedName });
 
   if (error) {
     console.error("Error joining lobby:", error);
@@ -90,7 +91,7 @@ export async function DELETE(request, { params }) {
   );
 }
 
-//ready
+//ready and unready
 export async function PATCH(request, { params }) {
   const token = request.headers.get("Authorization")?.replace("Bearer ", "");
   const supabase = createSupabaseServerClient(token);
@@ -105,18 +106,69 @@ export async function PATCH(request, { params }) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const { data, error } = await supabase
+  const { data: isReady } = await supabase
     .from("lobby_players")
-    .update({ is_ready: true })
-    .eq("user_id", user.id);
+    .select("is_ready")
+    .eq("user_id", user.id)
+    .maybeSingle();
 
-  if (error) {
-    console.error("Error marking player as ready:", error);
-    return new Response("Error marking player as ready", { status: 500 });
+  if (isReady) {
+    const { data, error } = await supabase
+      .from("lobby_players")
+      .update({ is_ready: false })
+      .eq("user_id", user.id);
+
+    if (error) {
+      console.error("Error marking player as unready:", error);
+      return new Response("Error marking player as unready", { status: 500 });
+    }
+
+    return new Response(JSON.stringify({ ready: false }), { status: 200 });
+  } else {
+    const { data, error } = await supabase
+      .from("lobby_players")
+      .update({ is_ready: true })
+      .eq("user_id", user.id);
+
+    if (error) {
+      console.error("Error marking player as ready:", error);
+      return new Response("Error marking player as ready", { status: 500 });
+    }
+
+    return new Response(JSON.stringify({ ready: true }), { status: 200 });
+  }
+}
+
+// get lobby players
+export async function GET(request, { params }) {
+  const token = request.headers.get("Authorization")?.replace("Bearer ", "");
+  const supabase = createSupabaseServerClient(token);
+  const { id } = await params;
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return new Response("Unauthorized", { status: 401 });
   }
 
-  return new Response(
-    { message: "Player marked as ready successfully." },
-    { status: 200 }
-  );
+  const { data, error } = await supabase
+    .from("lobby_players")
+    .select("player_name, user_id, lobbies(lobby_name)")
+    .eq("lobby_id", id);
+
+  if (error) {
+    console.error("Error fetching lobby players:", error);
+    return new Response("Error fetching lobby players", { status: 500 });
+  }
+
+  const lobbyNameInclude = data.map((p) => ({
+    player_name: p.player_name,
+    user_id: p.user_id,
+    lobby_name: p.lobbies?.lobby_name,
+  }));
+
+  return new Response(JSON.stringify(lobbyNameInclude), { status: 200 });
 }

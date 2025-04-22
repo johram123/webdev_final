@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "../../_authUtils/supabase_auth";
+import { useAuth } from "../../../_authUtils/supabase_auth";
 import { useEffect } from "react";
 
 export default function Profile() {

@@ -1,10 +1,10 @@
 "use client";
 
-import { Button } from "../../components/ui/button";
+import { Button } from "../../../components/ui/button";
 import { Plus } from "lucide-react";
-import { useAuth } from "../_authUtils/supabase_auth";
+import { useAuth } from "../../_authUtils/supabase_auth";
 import { useState } from "react";
-import LobbyList from "../components/lobby_list";
+import LobbyList from "../../components/lobby_list";
 
 export default function FindLobby() {
   const [showCreateLobby, setShowCreateLobby] = useState(false);
@@ -21,7 +21,7 @@ export default function FindLobby() {
   async function createLobby(event) {
     event.preventDefault();
 
-    await fetch("/api/lobbies", {
+    const res = await fetch("/api/lobbies", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -29,6 +29,15 @@ export default function FindLobby() {
       },
       body: JSON.stringify({ name: lobbyName }),
     });
+
+    const result = await res.json();
+
+    if (result.alreadyHost) {
+      alert("Cannot create lobby while already in one");
+    } else {
+      const lobbyId = result.id;
+      router.push(`/lobby/${lobbyId}`);
+    }
   }
 
   return showCreateLobby ? (
